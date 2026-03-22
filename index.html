@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Inventário Residencial</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.6">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+        <path d="M9 21V12h6v9"/>
+      </svg>
+      <h2>Inventário Residencial</h2>
+      <p>Entre com suas credenciais para continuar</p>
+    </div>
+    <div class="login-field">
+      <label>Usuário</label>
+      <input type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div id="login-error" class="login-error">Usuário ou senha incorretos.</div>
+    <button class="btn-login" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-page">
+  <header>
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+    <div><h1>Inventário Residencial</h1><span class="sub">Gerencie os itens da sua casa</span></div>
+    <div class="header-right">
+      <div class="user-chip"><span>👤</span><span id="chip-name">—</span><span class="role" id="chip-role"></span></div>
+      <button id="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span><span class="label" id="theme-label">Escuro</span>
+      </button>
+      <button class="btn-logout" onclick="doLogout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sair
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" onclick="switchTab('dashboard')" id="tab-dashboard">📊 Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('comodos')"   id="tab-comodos">🛋️ Cômodos</button>
+      <button class="tab-btn" onclick="switchTab('avaliacao')" id="tab-avaliacao">🔍 Avaliação</button>
+      <button class="tab-btn" onclick="switchTab('config')"    id="tab-config">⚙️ Configurações</button>
+    </div>
+
+    <!-- ── DASHBOARD ── -->
+    <div class="tab-pane active" id="pane-dashboard">
+      <div class="total-box">
+        <span>Valor total do inventário</span>
+        <strong id="dash-total">R$ 0,00</strong>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribuição por Cômodo</div>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        <div id="summary-list" class="summary-list"></div>
+      </div>
+    </div>
+
+    <!-- ── CÔMODOS ── -->
+    <div class="tab-pane" id="pane-comodos">
+      <div class="card">
+        <div class="card-title">Adicionar Item</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Cômodo</label>
+            <select id="item-comodo"><option value="">Selecione...</option></select>
+          </div>
+          <div class="form-group span2">
+            <label>Descrição</label>
+            <input type="text" id="item-desc" placeholder="Ex: Sofá 3 lugares"/>
+          </div>
+          <div class="form-group">
+            <label>Marca</label>
+            <input type="text" id="item-marca" placeholder="Ex: Samsung"/>
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <input type="number" id="item-qty" min="1" value="1"/>
+          </div>
+          <div class="form-group">
+            <label>Valor Unitário (R$)</label>
+            <input type="text" id="item-valor" placeholder="0,00" inputmode="numeric"/>
+          </div>
+        </div>
+        <div style="margin-top:18px">
+          <button class="btn btn-primary" onclick="addItem()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar Item
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-row-header">
+          <div class="card-title" style="margin-bottom:0">Itens Cadastrados</div>
+          <button class="btn btn-excel" onclick="exportXLSX('items')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l2.5 4 2.5-4M8 17h7"/></svg>
+            Exportar XLSX
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cômodo</th><th>Item</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th></th></tr></thead>
+            <tbody id="items-tbody"></tbody>
+          </table>
+        </div>
+        <div id="items-empty" class="empty" style="display:none">Nenhum item cadastrado ainda.</div>
+      </div>
+    </div>
+
+    <!-- ── AVALIAÇÃO ── -->
+    <div class="tab-pane" id="pane-avaliacao">
+      <div class="aval-stats" id="aval-stats"></div>
+      <div class="card">
+        <div class="card-title">Adicionar Item para Avaliação</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Categoria / Cômodo</label>
+            <select id="av-comodo"><option value="">Selecione...</option></select>
+          </div>
+          <div class="form-group span2">
+            <label>Descrição do Item</label>
+            <input type="text" id="av-desc" placeholder="Ex: Geladeira Frost Free 400L"/>
+          </div>
+          <div class="form-group">
+            <label>Marca / Fornecedor</label>
+            <input type="text" id="av-marca" placeholder="Ex: Brastemp"/>
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <input type="number" id="av-qty" min="1" value="1"/>
+          </div>
+          <div class="form-group">
+            <label>Valor Unitário (R$)</label>
+            <input type="text" id="av-valor" placeholder="0,00" inputmode="numeric"/>
+          </div>
+          <div class="form-group span3">
+            <label>Link do Produto / Orçamento</label>
+            <input type="url" id="av-link" placeholder="https://www.loja.com.br/produto"/>
+          </div>
+          <div class="form-group span3">
+            <label>Observações</label>
+            <textarea id="av-obs" placeholder="Condições, prazo de entrega, garantia..."></textarea>
+          </div>
+        </div>
+        <div style="margin-top:18px">
+          <button class="btn btn-primary" onclick="addAvalItem()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar à Avaliação
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:14px 20px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="filter-label">Filtrar:</span>
+          <button class="btn btn-ghost aval-filter active" onclick="filterAval('all',this)">Todos</button>
+          <button class="btn btn-ghost aval-filter" onclick="filterAval('pending',this)">⏳ Pendentes</button>
+          <button class="btn btn-ghost aval-filter" onclick="filterAval('approved',this)">✅ Aprovados</button>
+          <button class="btn btn-ghost aval-filter" onclick="filterAval('rejected',this)">❌ Reprovados</button>
+          <div style="margin-left:auto">
+            <button class="btn btn-excel" onclick="exportXLSX('aval')" style="padding:7px 14px;font-size:.82rem">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Exportar XLSX
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Itens em Avaliação</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Status</th><th>Categoria</th><th>Item</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th>Link / Obs.</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="aval-tbody"></tbody>
+          </table>
+        </div>
+        <div id="aval-empty" class="empty" style="display:none">Nenhum item em avaliação.</div>
+      </div>
+    </div>
+
+    <!-- ── CONFIGURAÇÕES ── -->
+    <div class="tab-pane" id="pane-config">
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchSubTab('comodos-cfg')" id="stab-comodos-cfg">🏠 Gerenciar Cômodos</button>
+        <button class="sub-tab" onclick="switchSubTab('users-cfg')" id="stab-users-cfg">👥 Usuários</button>
+      </div>
+      <div class="sub-pane active" id="spane-comodos-cfg">
+        <div class="card">
+          <div class="card-title">Adicionar Cômodo</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:200px">
+              <label>Nome do Cômodo</label>
+              <input type="text" id="new-comodo" placeholder="Ex: Sala de Estar" onkeydown="if(event.key==='Enter')saveComodo()"/>
+            </div>
+            <div style="display:flex;align-items:flex-end">
+              <button class="btn btn-success" onclick="saveComodo()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                Salvar
+              </button>
+            </div>
+          </div>
+          <div style="margin-top:18px">
+            <div class="card-title" style="font-size:.85rem;margin-bottom:10px">Cômodos Cadastrados</div>
+            <div id="room-list" class="room-list"></div>
+            <div id="room-empty" class="empty" style="display:none;padding:16px">Nenhum cômodo cadastrado.</div>
+          </div>
+        </div>
+      </div>
+      <div class="sub-pane" id="spane-users-cfg">
+        <div class="card" id="add-user-card">
+          <div class="card-title">Adicionar Usuário</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Nome completo</label><input type="text" id="nu-name" placeholder="Ex: João Silva"/></div>
+            <div class="form-group"><label>Nome de usuário</label><input type="text" id="nu-user" placeholder="Ex: joao" autocomplete="off"/></div>
+            <div class="form-group">
+              <label>Perfil</label>
+              <select id="nu-role"><option value="admin">Administrador</option><option value="user" selected>Usuário</option></select>
+            </div>
+            <div class="form-group">
+              <label>Senha inicial</label>
+              <input type="password" id="nu-pass" placeholder="••••••••" oninput="pwdStrength(this,'nu-strength','nu-hint')" autocomplete="new-password"/>
+              <div class="pwd-strength" id="nu-strength"></div>
+              <div class="pwd-hint" id="nu-hint"></div>
+            </div>
+          </div>
+          <div style="margin-top:18px">
+            <button class="btn btn-primary" onclick="addUser()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Adicionar Usuário
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Usuários Cadastrados</div>
+          <div id="users-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /app-page -->
+
+<!-- MODAL: Senha -->
+<div class="modal-overlay" id="pwd-modal" style="display:none" onclick="if(event.target===this)closePwdModal()">
+  <div class="modal-box">
+    <div class="modal-title">🔑 Alterar Senha — <span id="modal-uname"></span></div>
+    <input type="hidden" id="modal-uid"/>
+    <div class="form-group" id="old-pass-wrap" style="margin-bottom:14px">
+      <label>Senha atual</label>
+      <input type="password" id="modal-old" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div class="form-group" style="margin-bottom:6px">
+      <label>Nova senha</label>
+      <input type="password" id="modal-new" placeholder="••••••••" oninput="pwdStrength(this,'modal-strength','modal-hint')" autocomplete="new-password"/>
+      <div class="pwd-strength" id="modal-strength"></div>
+      <div class="pwd-hint" id="modal-hint"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:4px">
+      <label>Confirmar nova senha</label>
+      <input type="password" id="modal-confirm" placeholder="••••••••" autocomplete="new-password"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePwdModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePwd()">Salvar Senha</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Observações -->
+<div class="modal-overlay" id="obs-modal" style="display:none" onclick="if(event.target===this)closeObsModal()">
+  <div class="modal-box">
+    <div class="modal-title">📝 Observações</div>
+    <p id="obs-text" style="font-size:.9rem;line-height:1.6;white-space:pre-wrap;color:#475569"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeObsModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="script.js"></script>
+</body>
+</html>
