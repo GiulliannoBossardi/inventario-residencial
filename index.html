@@ -8,6 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css"/>
 </head>
+<!-- Firebase usa módulos ES — o script.js precisa de type="module" -->
 <body>
 
 <!-- LOGIN -->
@@ -299,6 +300,19 @@
     </div>
   </div>
 </div>
+
+<div id="toast"></div>
+
+<!-- Loader de conexão com Firebase -->
+<div id="db-loader" style="display:none;position:fixed;inset:0;background:#0f172acc;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+  <div style="width:44px;height:44px;border:4px solid #334155;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite"></div>
+  <span style="color:#e2e8f0;font-size:.9rem;font-weight:600">Conectando ao banco de dados...</span>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
 
 <div id="toast"></div>
 <script src="script.js"></script>
