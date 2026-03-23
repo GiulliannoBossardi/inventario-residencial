@@ -1,8 +1,29 @@
 /* ════════════════════════════════════════
    INVENTÁRIO RESIDENCIAL — script.js
+   Banco de dados: Firebase Firestore
 ════════════════════════════════════════ */
 
-/* ── Hash simples (ofusca senhas no localStorage) ── */
+/* ── Firebase SDK via CDN ── */
+import { initializeApp }                              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ── Configuração do projeto Firebase ── */
+const firebaseConfig = {
+  apiKey:            "AIzaSyDO4SDUnaDKiB4zXINMNkW3zjsZXQM5MGE",
+  authDomain:        "inventario-residencial-d44b8.firebaseapp.com",
+  projectId:         "inventario-residencial-d44b8",
+  storageBucket:     "inventario-residencial-d44b8.firebasestorage.app",
+  messagingSenderId: "951642398157",
+  appId:             "1:951642398157:web:ded40bf97768f32b8ab884"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+/* ── Referência ao documento central de dados ── */
+const DATA_REF = doc(db, 'inventario', 'dados');
+
+/* ── Hash simples (ofusca senhas) ── */
 function simpleHash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
@@ -15,17 +36,61 @@ function simpleHash(str) {
 let state   = { comodos: [], items: [], users: [], avalItems: [] };
 let session = { user: null };
 let avalFilter = 'all';
+let _saveTimer = null;
 
-function loadState() {
-  const s = localStorage.getItem('inventario_v3');
-  if (s) state = JSON.parse(s);
-  if (!state.avalItems) state.avalItems = [];
-  if (!state.users.length) {
-    state.users = [{ id: 'u0', name: 'Administrador', username: 'admin', passHash: simpleHash('admin123'), role: 'admin' }];
-    saveState();
+/* Carrega dados do Firestore uma vez e escuta mudanças em tempo real */
+async function loadState() {
+  showLoader(true);
+  try {
+    // Escuta mudanças em tempo real — atualiza automaticamente para todos os usuários
+    onSnapshot(DATA_REF, (snap) => {
+      if (snap.exists()) {
+        const remote = snap.data();
+        state.comodos   = remote.comodos   || [];
+        state.items     = remote.items     || [];
+        state.users     = remote.users     || [];
+        state.avalItems = remote.avalItems || [];
+      } else {
+        // Primeira execução — cria dados padrão
+        state.users = [{ id: 'u0', name: 'Administrador', username: 'admin', passHash: simpleHash('admin123'), role: 'admin' }];
+        state.comodos = ['Sala', 'Cozinha', 'Quarto', 'Banheiro', 'Escritório'];
+        saveState();
+      }
+      // Só re-renderiza se já estiver logado
+      if (session.user) renderAll();
+      showLoader(false);
+    });
+  } catch (e) {
+    console.error('Erro ao carregar dados:', e);
+    showLoader(false);
+    toast('Erro ao conectar ao banco de dados.', false);
   }
 }
-function saveState() { localStorage.setItem('inventario_v3', JSON.stringify(state)); }
+
+/* Salva state completo no Firestore (com debounce para não sobrecarregar) */
+function saveState() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    try {
+      await setDoc(DATA_REF, {
+        comodos:   state.comodos,
+        items:     state.items,
+        users:     state.users,
+        avalItems: state.avalItems
+      });
+    } catch (e) {
+      console.error('Erro ao salvar:', e);
+      toast('Erro ao salvar dados.', false);
+    }
+  }, 500);
+}
+
+/* ── Loader de conexão ── */
+function showLoader(show) {
+  let el = document.getElementById('db-loader');
+  if (!el) return;
+  el.style.display = show ? 'flex' : 'none';
+}
 
 /* ════════════════════════════════════════
    TEMA
@@ -471,10 +536,7 @@ function renderAll() { renderRoomList(); renderComodoSelect(); renderItemsTable(
    INIT
 ════════════════════════════════════════ */
 function init() {
-  loadState(); applyTheme();
-  if (!state.comodos.length) {
-    ['Sala', 'Cozinha', 'Quarto', 'Banheiro', 'Escritório'].forEach(c => state.comodos.push(c));
-    saveState();
-  }
+  applyTheme();
+  loadState(); // carrega do Firebase (assíncrono)
 }
 init();
