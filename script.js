@@ -537,6 +537,23 @@ function renderAll() { renderRoomList(); renderComodoSelect(); renderItemsTable(
 ════════════════════════════════════════ */
 function init() {
   applyTheme();
-  loadState(); // carrega do Firebase (assíncrono)
+  loadState();
 }
 init();
+
+/* ════════════════════════════════════════
+   EXPÕE FUNÇÕES NO ESCOPO GLOBAL
+   (necessário pois o script usa type="module")
+════════════════════════════════════════ */
+Object.assign(window, {
+  doLogin, doLogout,
+  toggleTheme,
+  switchTab, switchSubTab,
+  saveComodo, deleteComodo,
+  addItem, deleteItem,
+  addAvalItem, deleteAvalItem, setAvalStatus, filterAval, showObs, closeObsModal,
+  addUser, deleteUser,
+  openPwdModal, closePwdModal, savePwd,
+  exportXLSX,
+  pwdStrength
+});
