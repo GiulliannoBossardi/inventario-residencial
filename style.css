@@ -160,7 +160,18 @@ tr:hover td { background: #f8fafc; }
 .pwd-strength.s4 { background: #22c55e; width: 100%; }
 .pwd-hint { font-size: .73rem; color: #94a3b8; margin-top: 3px; }
 
-/* ── Empty / Toast ── */
+.btn-bought  { background: linear-gradient(135deg,#0369a1,#0284c7); color:#fff; font-size:.8rem; padding:5px 10px; font-weight:700; }
+.btn-bought:hover { transform:translateY(-1px); box-shadow:0 3px 10px #0284c744; }
+
+/* stat-money — valor abaixo do contador no card */
+.aval-stat .stat-money { font-size:.75rem; opacity:.85; display:block; margin-top:4px; }
+
+/* soma filtrada no tfoot */
+#aval-sum-row tr { font-weight:700; }
+body.dark #aval-sum-row tr { --sum-bg:#1e3a5f22; background:var(--sum-bg); }
+body.dark .btn-bought { box-shadow:0 2px 8px #0284c733; }
+body.dark #aval-filter-comodo,
+body.dark #aval-filter-desc { background:#0f172a; border-color:#334155; color:#e2e8f0; }
 .empty { text-align: center; padding: 32px; color: #94a3b8; font-size: .9rem; }
 #toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .875rem; font-weight: 500; opacity: 0; transform: translateY(10px); transition: .3s; z-index: 999; pointer-events: none; max-width: 300px; }
 #toast.show { opacity: 1; transform: translateY(0); }
