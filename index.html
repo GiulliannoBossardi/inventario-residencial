@@ -175,11 +175,20 @@
       </div>
       <div class="card" style="padding:14px 20px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="filter-label">Filtrar:</span>
+          <span class="filter-label">Status:</span>
           <button class="btn btn-ghost aval-filter active" onclick="filterAval('all',this)">Todos</button>
           <button class="btn btn-ghost aval-filter" onclick="filterAval('pending',this)">⏳ Pendentes</button>
           <button class="btn btn-ghost aval-filter" onclick="filterAval('approved',this)">✅ Aprovados</button>
           <button class="btn btn-ghost aval-filter" onclick="filterAval('rejected',this)">❌ Reprovados</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <span class="filter-label">Cômodo:</span>
+          <select id="aval-filter-comodo" onchange="filterAvalComodo(this.value)" style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fafafa;color:#1e293b;font-size:.83rem;cursor:pointer">
+            <option value="all">Todos os cômodos</option>
+          </select>
+          <span class="filter-label" style="margin-left:8px">Item:</span>
+          <input type="text" id="aval-filter-desc" placeholder="Buscar descrição ou marca..." oninput="filterAvalDesc(this.value)"
+            style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fafafa;color:#1e293b;font-size:.83rem;min-width:200px"/>
           <div style="margin-left:auto">
             <button class="btn btn-excel" onclick="exportXLSX('aval')" style="padding:7px 14px;font-size:.82rem">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -196,6 +205,7 @@
               <tr><th>Status</th><th>Categoria</th><th>Item</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th><th>Link / Obs.</th><th>Ações</th></tr>
             </thead>
             <tbody id="aval-tbody"></tbody>
+            <tfoot id="aval-sum-row"></tfoot>
           </table>
         </div>
         <div id="aval-empty" class="empty" style="display:none">Nenhum item em avaliação.</div>
@@ -311,10 +321,5 @@
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <script type="module" src="script.js"></script>
-</body>
-</html>
-
-<div id="toast"></div>
-<script src="script.js"></script>
 </body>
 </html>
