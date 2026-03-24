@@ -275,6 +275,11 @@ function renderItemsTable() {
 /* ════════════════════════════════════════
    AVALIAÇÃO
 ════════════════════════════════════════ */
+/* filtros da aba avaliação */
+let avalFilterStatus = 'all';
+let avalFilterComodo = 'all';
+let avalFilterDesc   = '';
+
 function addAvalItem() {
   const comodo = document.getElementById('av-comodo').value;
   const desc   = document.getElementById('av-desc').value.trim();
@@ -283,9 +288,9 @@ function addAvalItem() {
   const valor  = parseCurrency(document.getElementById('av-valor').value);
   const link   = document.getElementById('av-link').value.trim();
   const obs    = document.getElementById('av-obs').value.trim();
-  if (!comodo) { toast('Selecione uma categoria.', false); return; }
-  if (!desc)   { toast('Informe a descrição.', false); return; }
-  if (qty < 1) { toast('Quantidade ≥ 1.', false); return; }
+  if (!comodo)    { toast('Selecione uma categoria.', false); return; }
+  if (!desc)      { toast('Informe a descrição.', false); return; }
+  if (qty < 1)    { toast('Quantidade ≥ 1.', false); return; }
   if (valor <= 0) { toast('Informe o valor.', false); return; }
   state.avalItems.push({
     id: Date.now(), comodo, desc, marca, qty, valor, link, obs,
@@ -296,7 +301,8 @@ function addAvalItem() {
   ['av-desc','av-marca','av-link','av-obs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('av-qty').value   = '1';
   document.getElementById('av-valor').value = '';
-  renderAvalTable(); toast('Item adicionado à avaliação!');
+  renderAvalTable();
+  toast('Item adicionado à avaliação!');
 }
 
 function setAvalStatus(id, status) {
@@ -307,16 +313,52 @@ function setAvalStatus(id, status) {
   toast(labels[status] + ': ' + item.desc);
 }
 
-function deleteAvalItem(id) {
-  state.avalItems = state.avalItems.filter(i => i.id !== id); saveState();
-  renderAvalTable(); toast('Item removido.');
+/** Move item aprovado para a aba Cômodos */
+function markBought(id) {
+  const item = state.avalItems.find(i => i.id === id);
+  if (!item) return;
+  // Garante que o cômodo existe
+  if (!state.comodos.includes(item.comodo)) state.comodos.push(item.comodo);
+  // Adiciona em Cômodos
+  state.items.push({
+    id: Date.now(),
+    comodo: item.comodo,
+    desc:   item.desc,
+    marca:  item.marca,
+    qty:    item.qty,
+    valor:  item.valor
+  });
+  // Remove de Avaliação
+  state.avalItems = state.avalItems.filter(i => i.id !== id);
+  saveState();
+  renderAvalTable();
+  renderItemsTable();
+  renderComodoSelect();
+  toast('🛒 "' + item.desc + '" movido para Cômodos!');
 }
 
+function deleteAvalItem(id) {
+  state.avalItems = state.avalItems.filter(i => i.id !== id);
+  saveState(); renderAvalTable(); toast('Item removido.');
+}
+
+/* ── filtros ── */
 function filterAval(f, btn) {
-  avalFilter = f;
+  avalFilterStatus = f;
   document.querySelectorAll('.aval-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderAvalTable();
+}
+function filterAvalComodo(val) { avalFilterComodo = val; renderAvalTable(); }
+function filterAvalDesc(val)   { avalFilterDesc   = val.toLowerCase(); renderAvalTable(); }
+
+function getFiltered() {
+  return state.avalItems.filter(i => {
+    const okStatus = avalFilterStatus === 'all' || i.status === avalFilterStatus;
+    const okComodo = avalFilterComodo === 'all' || i.comodo === avalFilterComodo;
+    const okDesc   = !avalFilterDesc  || i.desc.toLowerCase().includes(avalFilterDesc) || (i.marca||'').toLowerCase().includes(avalFilterDesc);
+    return okStatus && okComodo && okDesc;
+  });
 }
 
 function showObs(id) {
@@ -327,31 +369,86 @@ function showObs(id) {
 }
 function closeObsModal() { document.getElementById('obs-modal').style.display = 'none'; }
 
+/* ── stats: baseados nos itens filtrados ── */
 function renderAvalStats() {
-  const total    = state.avalItems.length;
-  const pending  = state.avalItems.filter(i => i.status === 'pending').length;
-  const approved = state.avalItems.filter(i => i.status === 'approved').length;
-  const rejected = state.avalItems.filter(i => i.status === 'rejected').length;
-  const totalVal = state.avalItems.filter(i => i.status === 'approved').reduce((s, i) => s + (i.qty * i.valor), 0);
+  const filtered  = getFiltered();
+  const all       = state.avalItems;
+
+  // contadores globais (sem filtro) para os cards de status
+  const totPending  = all.filter(i => i.status === 'pending').reduce((s,i)  => s + i.qty*i.valor, 0);
+  const totApproved = all.filter(i => i.status === 'approved').reduce((s,i) => s + i.qty*i.valor, 0);
+  const totRejected = all.filter(i => i.status === 'rejected').reduce((s,i) => s + i.qty*i.valor, 0);
+  const totAll      = all.reduce((s,i) => s + i.qty*i.valor, 0);
+
+  // soma dos itens filtrados na tabela
+  const filteredTotal = filtered.reduce((s,i) => s + i.qty*i.valor, 0);
+
   document.getElementById('aval-stats').innerHTML = `
-    <div class="aval-stat total">   <span class="stat-val">${total}</span>    <span class="stat-lbl">Total de Itens</span></div>
-    <div class="aval-stat pending"> <span class="stat-val">${pending}</span>  <span class="stat-lbl">⏳ Pendentes</span></div>
-    <div class="aval-stat approved"><span class="stat-val">${approved}</span> <span class="stat-lbl">✅ Aprovados</span></div>
-    <div class="aval-stat rejected"><span class="stat-val">${rejected}</span> <span class="stat-lbl">❌ Reprovados</span></div>
-    <div class="aval-stat money">   <span class="stat-val" style="font-size:1.1rem">${fmtBRL(totalVal)}</span><span class="stat-lbl">💰 Total Aprovado</span></div>`;
+    <div class="aval-stat total">
+      <span class="stat-val">${all.length}</span>
+      <span class="stat-lbl">Total</span>
+      <span class="stat-money">${fmtBRL(totAll)}</span>
+    </div>
+    <div class="aval-stat pending">
+      <span class="stat-val">${all.filter(i=>i.status==='pending').length}</span>
+      <span class="stat-lbl">⏳ Pendentes</span>
+      <span class="stat-money">${fmtBRL(totPending)}</span>
+    </div>
+    <div class="aval-stat approved">
+      <span class="stat-val">${all.filter(i=>i.status==='approved').length}</span>
+      <span class="stat-lbl">✅ Aprovados</span>
+      <span class="stat-money">${fmtBRL(totApproved)}</span>
+    </div>
+    <div class="aval-stat rejected">
+      <span class="stat-val">${all.filter(i=>i.status==='rejected').length}</span>
+      <span class="stat-lbl">❌ Reprovados</span>
+      <span class="stat-money">${fmtBRL(totRejected)}</span>
+    </div>
+    <div class="aval-stat money">
+      <span class="stat-val" style="font-size:1rem">${fmtBRL(filteredTotal)}</span>
+      <span class="stat-lbl">🔍 Total Filtrado</span>
+      <span class="stat-money">${filtered.length} iten${filtered.length!==1?'s':''}
+      </span>
+    </div>`;
+}
+
+/* ── render filtros ── */
+function renderAvalFilters() {
+  // dropdown de cômodos
+  const sel = document.getElementById('aval-filter-comodo');
+  if (!sel) return;
+  const cur = sel.value;
+  const comodos = [...new Set(state.avalItems.map(i => i.comodo))].sort();
+  sel.innerHTML = '<option value="all">Todos os cômodos</option>' +
+    comodos.map(c => `<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
 }
 
 function renderAvalTable() {
   renderAvalStats();
-  const tb       = document.getElementById('aval-tbody'), em = document.getElementById('aval-empty');
-  const filtered = avalFilter === 'all' ? state.avalItems : state.avalItems.filter(i => i.status === avalFilter);
-  if (!filtered.length) { tb.innerHTML = ''; em.style.display = ''; return; }
+  renderAvalFilters();
+  const tb       = document.getElementById('aval-tbody');
+  const em       = document.getElementById('aval-empty');
+  const filtered = getFiltered();
+
+  // linha de soma ao rodapé
+  const sumEl = document.getElementById('aval-sum-row');
+
+  if (!filtered.length) {
+    tb.innerHTML = ''; em.style.display = '';
+    if (sumEl) sumEl.style.display = 'none';
+    return;
+  }
   em.style.display = 'none';
+  if (sumEl) sumEl.style.display = '';
+
   const badge = {
     pending : '<span class="badge badge-pending">⏳ Pendente</span>',
     approved: '<span class="badge badge-approved">✅ Aprovado</span>',
     rejected: '<span class="badge badge-rejected">❌ Reprovado</span>'
   };
+
+  const sumTotal = filtered.reduce((s,i) => s + i.qty*i.valor, 0);
+
   tb.innerHTML = filtered.map(i => `
     <tr>
       <td>${badge[i.status]}</td>
@@ -374,6 +471,9 @@ function renderAvalTable() {
       </td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${i.status === 'approved'
+            ? `<button class="btn btn-bought" onclick="markBought(${i.id})">🛒 Comprado</button>`
+            : ''}
           ${i.status !== 'approved' ? `<button class="btn btn-approve" onclick="setAvalStatus(${i.id},'approved')">✅ Aprovar</button>`  : ''}
           ${i.status !== 'rejected' ? `<button class="btn btn-reject"  onclick="setAvalStatus(${i.id},'rejected')">❌ Reprovar</button>` : ''}
           ${i.status !== 'pending'  ? `<button class="btn btn-warn"    onclick="setAvalStatus(${i.id},'pending')">⏳ Pendente</button>`  : ''}
@@ -381,6 +481,16 @@ function renderAvalTable() {
         </div>
       </td>
     </tr>`).join('');
+
+  // linha de soma
+  if (sumEl) sumEl.innerHTML = `
+    <tr style="background:var(--sum-bg, #f1f5f9);font-weight:700">
+      <td colspan="5" style="text-align:right;font-size:.82rem;color:#64748b">
+        Soma dos ${filtered.length} iten${filtered.length!==1?'s':''} filtrados:
+      </td>
+      <td style="color:#1d4ed8;font-size:1rem">${fmtBRL(sumTotal)}</td>
+      <td colspan="2"></td>
+    </tr>`;
 }
 
 /* ════════════════════════════════════════
@@ -551,7 +661,10 @@ Object.assign(window, {
   switchTab, switchSubTab,
   saveComodo, deleteComodo,
   addItem, deleteItem,
-  addAvalItem, deleteAvalItem, setAvalStatus, filterAval, showObs, closeObsModal,
+  addAvalItem, deleteAvalItem, setAvalStatus, filterAval,
+  filterAvalComodo, filterAvalDesc,
+  markBought,
+  showObs, closeObsModal,
   addUser, deleteUser,
   openPwdModal, closePwdModal, savePwd,
   exportXLSX,
